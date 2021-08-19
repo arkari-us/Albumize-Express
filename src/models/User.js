@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 
 const userModel = new mongoose.Schema({
-    spotifyAccessToken: String,
-    spotifyRefreshToken: String
+  userid: String,
+  accessToken: String,
+  refreshToken: String,
+  expires: Number
 });
 
 module.exports = mongoose.model('User', userModel);
