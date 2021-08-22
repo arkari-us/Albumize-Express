@@ -5,7 +5,7 @@ const qs = require('qs');
 const { default: axios } = require('axios');
 
 const stateKey = 'auth_state';
-const authKeyKey = 'authKey';
+const idkey = 'id';
 
 function userController(User) {
 
@@ -18,7 +18,7 @@ function userController(User) {
     res.redirect('https://accounts.spotify.com/authorize?' +
       'response_type=code' +
       '&client_id=' + process.env.CLIENT_ID +
-      '&scope=playlist-read-private' +
+      '&scope=playlist-read-private user-read-private' +
       '&redirect_uri=' + process.env.CALLBACK_URI +
       '&state=' + state);
   }
@@ -35,8 +35,8 @@ function userController(User) {
     res.clearCookie(stateKey);
 
     const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/x-www-form-urlencoded'
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded'
     };
 
     const postQuery = {
@@ -53,30 +53,51 @@ function userController(User) {
       headers
     )
       .then((spotifyKeys) => {
-        const keys = {
-          refreshToken: spotifyKeys.data.refresh_token,
-          accessToken: spotifyKeys.data.access_token,
-          expires: new Date().getTime() + spotifyKeys.data.expires_in
-        }
-        const user = new User(keys);
 
-        //need to add a Spotify call to get user ID and use that instead of token
-        const query = {
-          refreshToken: spotifyKeys.data.refresh_token
-        }
-
-        //upsert user
-        User.findOneAndUpdate(query, user, {upsert: true}, function(err, doc) {
-          if (err) {
-            return res.send(err);
+        axios.get(
+          "https://api.spotify.com/v1/me", {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            "Authorization": "Bearer " + spotifyKeys.data.access_token
           }
-          res.cookie(authKeyKey, doc.accessToken);
-          res.redirect(process.env.CLIENT_URI)
-        });
+        })
+          .then((profile) => {
+            const userid = profile.data.id;
+
+            const keys = {
+              refreshToken: spotifyKeys.data.refresh_token,
+              accessToken: spotifyKeys.data.access_token,
+              expires: new Date().getTime() + spotifyKeys.data.expires_in
+            }
+
+            //need to add a Spotify call to get user ID and use that instead of token
+            const query = {
+              _id: userid
+            }
+
+            const options = {
+              upsert: true,
+              useFindAndModify: false
+            }
+
+            //upsert user
+            User.findOneAndUpdate(query, { $set: keys }, options, function (err, doc) {
+              if (err) {
+                return res.send(err);
+              }
+              res.cookie(idkey, userid);
+              return res.send(process.env.CLIENT_URI);
+            });
+          })
+          .catch((err) => {
+            console.log(err);
+          });
       })
       .catch((err) => {
-        console.log(err);
-      });
+        return res.send(err);
+      })
+
   }
 
   function createStateString() {

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const userModel = new mongoose.Schema({
-  userid: String,
+  _id: String,
   accessToken: String,
   refreshToken: String,
   expires: Number

@@ -6,10 +6,19 @@ const cookieParser = require('cookie-parser');
 const app = express();
 dotenv.config();
 
-const db = mongoose.connect(process.env.MONGOURI,{dbName: process.env.DBNAME});
+//Resolve deprecation warnings from mongodb
+mongoose.set('useNewUrlParser', true);
+mongoose.set('useFindAndModify', false);
+mongoose.set('useCreateIndex', true);
+mongoose.set('useUnifiedTopology', true);
+
+const mongodbOptions = {
+  dbName: process.env.DBNAME
+}
+
+const db = mongoose.connect(process.env.MONGOURI,mongodbOptions);
 const port = process.env.PORT;
 
-const User = require('./models/User');
 const userRouter = require('./routes/userRoutes');
 
 app.use(express.urlencoded({ extended: true }));
