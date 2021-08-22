@@ -86,7 +86,7 @@ function userController(User) {
                 return res.send(err);
               }
               res.cookie(idkey, userid);
-              return res.send(process.env.CLIENT_URI);
+              return res.redirect(process.env.CLIENT_URI);
             });
           })
           .catch((err) => {
