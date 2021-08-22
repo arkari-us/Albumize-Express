@@ -53,7 +53,7 @@ function userController(User) {
       headers
     )
       .then((spotifyKeys) => {
-
+        //get user id (to be used as mongodb _id)
         axios.get(
           "https://api.spotify.com/v1/me", {
           headers: {
@@ -71,7 +71,6 @@ function userController(User) {
               expires: new Date().getTime() + spotifyKeys.data.expires_in
             }
 
-            //need to add a Spotify call to get user ID and use that instead of token
             const query = {
               _id: userid
             }

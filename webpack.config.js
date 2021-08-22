@@ -11,8 +11,5 @@ module.exports = {
   target: 'node',
   plugins: [
     new Dotenv()
-  ],
-  externals: [
-    'mongodb-client-encryption'
   ]
 }
