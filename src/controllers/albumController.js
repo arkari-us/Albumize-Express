@@ -13,7 +13,7 @@ function albumController(User) {
       .then((playlistId) => {
         //redirect to playlist by ID handler
         res.redirect('/albums/' + playlistId);
-      })
+      });
   }
 
   async function getNewReleasePlaylistId(accessToken) {
@@ -31,11 +31,14 @@ function albumController(User) {
 
     return axios.get(
       "https://api.spotify.com/v1/search?" + qs.stringify(query), {
-        headers: headers
+      headers: headers
     })
       .then((results) => {
-        if (results.data.playlists.items.length){
+        if (results.data.playlists.items.length) {
           return results.data.playlists.items[0].id;
+        }
+        else {
+          throw 'Unable to retrieve Release Radar playlist ID';
         }
       })
       .catch((err) => {

@@ -3,9 +3,9 @@ const User = require('../models/User');
 
 const albumRouter = express.Router();
 const albumController = require('../controllers/albumController')(User);
-const authController = require('../controllers/authController')(User);
+const userController = require('../controllers/userController')(User);
 
-albumRouter.use(authController.authCheck)
+albumRouter.use(userController.authCheck)
 
 albumRouter.route('/')
   .get(albumController.getNewReleaseAlbums);

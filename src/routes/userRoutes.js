@@ -2,11 +2,11 @@ const express = require('express');
 const User = require('../models/User');
 
 const userRouter = express.Router();
-const authController = require('../controllers/authController')(User);
+const userController = require('../controllers/userController')(User);
 
 userRouter.route('/auth')
-  .get(authController.requestSpotifyAuth);
+  .get(userController.requestSpotifyAuth);
 userRouter.route('/auth/callback')
-  .get(authController.authCallback);
+  .get(userController.authCallback);
 
 module.exports = userRouter;

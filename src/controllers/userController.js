@@ -10,15 +10,11 @@ const upsertOptions = {
   upsert: true,
   useFindAndModify: false
 }
-
+const oneWeekInSeconds = 60*60*24*7;
 
 function userController(User) {
 
   function requestSpotifyAuth(req, res) {
-    if (req.cookies && req.cookies[stateKey]) {
-      res.clearCookie(stateKey);
-    }
-
     const state = createStateString()
     const query = qs.stringify({
       response_type: 'code',
@@ -28,7 +24,7 @@ function userController(User) {
       state: state
     });
 
-    res.cookie(stateKey, state);
+    res.cookie(stateKey, state { secure:true, httponly:true });
     res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
@@ -85,7 +81,7 @@ function userController(User) {
               if (err) {
                 return res.send(err);
               }
-              res.cookie(idkey, userid);
+              res.cookie(idkey, userid, { secure:true, httponly:true, maxAge:spotifyKeys.data.expires_in });
               return res.redirect(process.env.CLIENT_URI);
             });
           })
