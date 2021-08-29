@@ -4,8 +4,13 @@ const urlParse = require('url-parse');
 const qs = require('qs');
 const { default: axios } = require('axios');
 
-const stateKey = 'auth_state';
-const idkey = 'id';
+const stateKey = process.env.STATEKEY;
+const idkey = process.env.IDKEY;
+const upsertOptions = {
+  upsert: true,
+  useFindAndModify: false
+}
+
 
 function userController(User) {
 
@@ -13,14 +18,18 @@ function userController(User) {
     if (req.cookies && req.cookies[stateKey]) {
       res.clearCookie(stateKey);
     }
+
     const state = createStateString()
+    const query = qs.stringify({
+      response_type: 'code',
+      client_id: process.env.CLIENT_ID,
+      scope: 'playlist-read-private user-read-private',
+      redirect_uri: process.env.CALLBACK_URI,
+      state: state
+    });
+
     res.cookie(stateKey, state);
-    res.redirect('https://accounts.spotify.com/authorize?' +
-      'response_type=code' +
-      '&client_id=' + process.env.CLIENT_ID +
-      '&scope=playlist-read-private user-read-private' +
-      '&redirect_uri=' + process.env.CALLBACK_URI +
-      '&state=' + state);
+    res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
   function authCallback(req, res) {
@@ -58,8 +67,8 @@ function userController(User) {
           "https://api.spotify.com/v1/me", {
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/x-www-form-urlencoded',
-            "Authorization": "Bearer " + spotifyKeys.data.access_token
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + spotifyKeys.data.access_token
           }
         })
           .then((profile) => {
@@ -71,17 +80,8 @@ function userController(User) {
               expires: new Date().getTime() + spotifyKeys.data.expires_in
             }
 
-            const query = {
-              _id: userid
-            }
-
-            const options = {
-              upsert: true,
-              useFindAndModify: false
-            }
-
             //upsert user
-            User.findOneAndUpdate(query, { $set: keys }, options, function (err, doc) {
+            User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
               if (err) {
                 return res.send(err);
               }
@@ -109,7 +109,73 @@ function userController(User) {
     return res;
   }
 
-  return { requestSpotifyAuth, authCallback };
+  function authCheck(req, res, next) {
+    if (!req.cookies || !req.cookies[idkey]) {
+      return res.send('No session')
+    }
+
+    User.findById(req.cookies[idkey], function (err, doc) {
+      if (err) {
+        return res.send(err);
+      }
+      
+      const curTime = new Date().getTime();
+      if (curTime > doc.expires) {
+        refreshApiToken(doc.refreshToken)
+          .then((res) => {
+            req.accessToken = res.accessToken;
+            next();
+          })
+      }
+      else{
+        req.accessToken = doc.accessToken;
+        next();
+      }
+    });
+  }
+
+  async function refreshApiToken(refreshToken, userid) {
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/x-www-form-urlencoded'
+    };
+
+    const postQuery = {
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+      redirect_uri: process.env.CALLBACK_URI,
+      client_id: process.env.CLIENT_ID,
+      client_secret: process.env.CLIENT_SECRET
+    }
+
+    console.log('Expired API token, refreshing')
+
+    return axios.post(
+      'https://accounts.spotify.com/api/token',
+      qs.stringify(postQuery),
+      headers
+    )
+      .then((spotifyKeys) => {
+        const keys = { 
+          accessToken: spotifyKeys.data.access_token,
+          expires: new Date().getTime() + spotifyKeys.data.expires_in
+        }
+
+        return User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
+          if (err) {
+            return res.send(err);
+          }
+
+          console.log('refreshed token');
+          return keys.accessToken;
+        });
+      })
+      .catch((err) => {
+        return res.send(err);
+      });
+  }
+
+  return { requestSpotifyAuth, authCallback, authCheck };
 }
 
 module.exports = userController;

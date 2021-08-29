@@ -11,5 +11,8 @@ module.exports = {
   target: 'node',
   plugins: [
     new Dotenv()
-  ]
+  ],
+  optimization: {
+    minimize: true
+  }
 }
