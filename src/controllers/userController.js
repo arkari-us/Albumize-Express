@@ -24,7 +24,7 @@ function userController(User) {
       state: state
     });
 
-    res.cookie(stateKey, state { secure:true, httponly:true });
+    res.cookie(stateKey, state, { secure:true, httponly:true });
     res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
@@ -73,7 +73,7 @@ function userController(User) {
             const keys = {
               refreshToken: spotifyKeys.data.refresh_token,
               accessToken: spotifyKeys.data.access_token,
-              expires: new Date().getTime() + spotifyKeys.data.expires_in
+              expires: new Date().getTime() / 1000 + spotifyKeys.data.expires_in
             }
 
             //upsert user
@@ -81,7 +81,7 @@ function userController(User) {
               if (err) {
                 return res.send(err);
               }
-              res.cookie(idkey, userid, { secure:true, httponly:true, maxAge:spotifyKeys.data.expires_in });
+              res.cookie(idkey, userid, { secure:true, httponly:true, maxAge:oneWeekInSeconds, path:'/Albumize' });
               return res.redirect(process.env.CLIENT_URI);
             });
           })
@@ -115,7 +115,7 @@ function userController(User) {
         return res.send(err);
       }
       
-      const curTime = new Date().getTime();
+      const curTime = new Date().getTime() / 1000;
       if (curTime > doc.expires) {
         refreshApiToken(doc.refreshToken)
           .then((res) => {
@@ -154,7 +154,7 @@ function userController(User) {
       .then((spotifyKeys) => {
         const keys = { 
           accessToken: spotifyKeys.data.access_token,
-          expires: new Date().getTime() + spotifyKeys.data.expires_in
+          expires: new Date().getTime() / 1000 + spotifyKeys.data.expires_in
         }
 
         return User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {

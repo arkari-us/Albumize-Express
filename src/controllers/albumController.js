@@ -11,8 +11,10 @@ function albumController(User) {
   function getNewReleaseAlbums(req, res) {
     getNewReleasePlaylistId(req.accessToken)
       .then((playlistId) => {
-        //redirect to playlist by ID handler
-        res.redirect('/albums/' + playlistId);
+        getAlbums(playlistId, req.accessToken)
+          .then((data) => {
+            return res.send(data);
+          });
       });
   }
 
@@ -42,33 +44,44 @@ function albumController(User) {
         }
       })
       .catch((err) => {
-        console.log(err);
         throw 'Unable to retrieve Release Radar playlist ID';
       });
   }
 
   function getAlbumsByPlaylistId(req, res) {
-    const playlistId = req.params.id;
+    getAlbums(req.params.id, req.accessToken)
+      .then((data) => {
+        return res.send(data);
+      });
+  }
+
+  async function getAlbums(id, accessToken) {
 
     const headers = {
       'Accept': 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
+      'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + accessToken
     };
 
     const postQuery = {
-      //TODO
-    }
+      fields:'tracks.items.track.album(album_type,name,id,images,release_date,total_tracks,artists(id,name))'
+    };
 
-    //TODO: get albums
-  }
-
-  function getPlaylistTracks(playlistId) {
-    //todo: get playlist tracks
-  }
-
-  function getAlbums(tracks) {
-    //TODO: get album list for tracks
+    return await axios.get(
+      'https://api.spotify.com/v1/playlists/' + id + '?' + qs.stringify(postQuery),
+      { headers: headers }
+    )
+      .then((reply) => {
+        var albums = [];
+        reply.data.tracks.items.forEach((e) => {
+          albums.push(e.track.album);
+        });
+        
+        return albums; 
+      })
+      .catch((err) => {
+        throw 'Unable to get albums by playlist ID';
+      });
   }
 
   return { getNewReleaseAlbums, getAlbumsByPlaylistId };
