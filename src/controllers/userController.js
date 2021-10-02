@@ -31,7 +31,7 @@ function userController(User) {
   function authCallback(req, res) {
     const query = qs.parse(urlParse(req.url).query, { ignoreQueryPrefix: true });
     if (!req.cookies || !req.cookies[stateKey] || !query || !query.state || req.cookies[stateKey] !== query.state) {
-      return res.status(400).send('State mismatch');
+      return res.status(400).send({err:'State mismatch',status:400});
     }
 
     authCode = query.code;
@@ -78,7 +78,7 @@ function userController(User) {
             //upsert user
             User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
               if (err) {
-                return res.status(500).send(err);
+                return res.status(500).send({err:err,status:500});
               }
               res.cookie(idkey, userid, { secure:true, httponly:true, maxAge:oneWeekInSeconds, path:'/albumize' });
               return res.redirect(process.env.CLIENT_URI);
@@ -89,7 +89,7 @@ function userController(User) {
           });
       })
       .catch((err) => {
-        return res.status(500).send(err);
+        return res.status(500).send({err:err,status:500});
       })
 
   }
@@ -106,12 +106,12 @@ function userController(User) {
 
   function authCheck(req, res, next) {
     if (!req.cookies || !req.cookies[idkey]) {
-      return res.status(400).send('No session')
+      return res.status(401).send({err:'No session',status:401});
     }
 
     User.findById(req.cookies[idkey], function (err, doc) {
       if (err) {
-        return res.status(500).send(err);
+        return res.status(500).send({err:err,status:500});
       }
       
       const curTime = new Date().getTime() / 1000;
@@ -158,7 +158,7 @@ function userController(User) {
 
         return User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
           if (err) {
-            return res.status(500).send(err);
+            return res.status(500).send({err:err,status:500});
           }
 
           console.log('refreshed token');
@@ -166,7 +166,7 @@ function userController(User) {
         });
       })
       .catch((err) => {
-        return res.status(500).send(err);
+        return res.status(500).send({err:err,status:500});
       });
   }
 

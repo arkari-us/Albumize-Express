@@ -13,7 +13,7 @@ function albumController(User) {
       .then((playlistId) => {
         getAlbums(playlistId, req.accessToken)
           .then((data) => {
-            return res.status(200).send({albums: data});
+            return res.status(200).send({albums: data, status:200});
           });
       });
   }
@@ -51,7 +51,7 @@ function albumController(User) {
   function getAlbumsByPlaylistId(req, res) {
     getAlbums(req.params.id, req.accessToken)
       .then((data) => {
-        return res.status(200).send({albums: data});
+        return res.status(200).send({albums: data, status:200});
       });
   }
 
