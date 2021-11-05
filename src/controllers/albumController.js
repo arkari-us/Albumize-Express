@@ -9,18 +9,28 @@ const idkey = process.env.IDKEY;
 function albumController(User) {
 
   function getNewReleaseAlbums(req, res) {
-    getNewReleasePlaylistId(req.accessToken)
+    getCuratedPlaylistId(req.accessToken, 'Release Radar')
       .then((playlistId) => {
         getAlbums(playlistId, req.accessToken)
           .then((data) => {
-            return res.status(200).send({albums: data, status:200});
+            return res.status(200).send({ albums: data, status: 200 });
           });
       });
   }
 
-  async function getNewReleasePlaylistId(accessToken) {
+  function getDiscoverWeeklyAlbums(req, res) {
+    getCuratedPlaylistId(req.accessToken, 'Discover Weekly')
+    .then((playlistId) => {
+      getAlbums(playlistId, req.accessToken)
+        .then((data) => {
+          return res.status(200).send({ albums: data, status: 200 });
+        });
+    });
+  }
+
+  async function getCuratedPlaylistId(accessToken, playlistName) {
     const query = {
-      q: 'Release Radar',
+      q: playlistName,
       type: 'playlist',
       limit: 1
     }
@@ -51,7 +61,7 @@ function albumController(User) {
   function getAlbumsByPlaylistId(req, res) {
     getAlbums(req.params.id, req.accessToken)
       .then((data) => {
-        return res.status(200).send({albums: data, status:200});
+        return res.status(200).send({ albums: data, status: 200 });
       });
   }
 
@@ -64,7 +74,7 @@ function albumController(User) {
     };
 
     const postQuery = {
-      fields:'tracks.items.track.album(album_type,name,id,images,release_date,total_tracks,artists(id,name))'
+      fields: 'tracks.items.track.album(album_type,name,id,images,release_date,total_tracks,artists(id,name))'
     };
 
     return await axios.get(
@@ -76,15 +86,15 @@ function albumController(User) {
         reply.data.tracks.items.forEach((e) => {
           albums.push(e.track.album);
         });
-        
-        return albums; 
+
+        return albums;
       })
       .catch((err) => {
         throw 'Unable to get albums by playlist ID';
       });
   }
 
-  return { getNewReleaseAlbums, getAlbumsByPlaylistId };
+  return { getNewReleaseAlbums, getDiscoverWeeklyAlbums, getAlbumsByPlaylistId };
 }
 
 module.exports = albumController;

@@ -102,3 +102,6 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Shell scripts (used for deployment, etc.)
+*.sh

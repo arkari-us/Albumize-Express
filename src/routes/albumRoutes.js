@@ -5,11 +5,13 @@ const albumRouter = express.Router();
 const albumController = require('../controllers/albumController')(User);
 const userController = require('../controllers/userController')(User);
 
-albumRouter.use(userController.authCheck)
+albumRouter.use(userController.authCheck);
 
-albumRouter.route('/')
+albumRouter.route('/releaseradar')
   .get(albumController.getNewReleaseAlbums);
+albumRouter.route('/discoverweekly')
+  .get(albumController.getDiscoverWeeklyAlbums);
 albumRouter.route('/:id')
   .get(albumController.getAlbumsByPlaylistId);
 
-  module.exports = albumRouter;
+module.exports = albumRouter;

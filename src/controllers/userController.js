@@ -1,5 +1,3 @@
-const mongoose = require('mongoose');
-const User = require('../models/User');
 const urlParse = require('url-parse');
 const qs = require('qs');
 const { default: axios } = require('axios');
@@ -10,7 +8,6 @@ const upsertOptions = {
   upsert: true,
   useFindAndModify: false
 }
-const oneWeekInSeconds = 60*60*24*7;
 
 function userController(User) {
 
@@ -24,14 +21,14 @@ function userController(User) {
       state: state
     });
 
-    res.cookie(stateKey, state, { secure:true, httponly:true });
+    res.cookie(stateKey, state, { secure: true, httponly: true, path: '/albumize', domain:'arkari.us' });
     res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
   function authCallback(req, res) {
     const query = qs.parse(urlParse(req.url).query, { ignoreQueryPrefix: true });
     if (!req.cookies || !req.cookies[stateKey] || !query || !query.state || req.cookies[stateKey] !== query.state) {
-      return res.status(400).send({err:'State mismatch',status:400});
+      return res.status(400).send({ err: 'State mismatch', status: 400 });
     }
 
     authCode = query.code;
@@ -72,15 +69,15 @@ function userController(User) {
             const keys = {
               refreshToken: spotifyKeys.data.refresh_token,
               accessToken: spotifyKeys.data.access_token,
-              expires: new Date().getTime() / 1000 + spotifyKeys.data.expires_in
+              expires: new Date().getTime() + spotifyKeys.data.expires_in
             }
 
             //upsert user
             User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
               if (err) {
-                return res.status(500).send({err:err,status:500});
+                return res.status(500).send({ err: err, status: 500 });
               }
-              res.cookie(idkey, userid, { secure:true, httponly:true, maxAge:oneWeekInSeconds, path:'/albumize' });
+              req.session[idkey] = userid;
               return res.redirect(process.env.CLIENT_URI);
             });
           })
@@ -89,9 +86,8 @@ function userController(User) {
           });
       })
       .catch((err) => {
-        return res.status(500).send({err:err,status:500});
+        return res.status(500).send({ err: err, status: 500 });
       })
-
   }
 
   function createStateString() {
@@ -105,15 +101,15 @@ function userController(User) {
   }
 
   function authCheck(req, res, next) {
-    if (!req.cookies || !req.cookies[idkey]) {
-      return res.status(401).send({err:'No session',status:401});
+    if (!req.session || !req.session[idkey]) {
+      return res.status(401).send({ err: 'No session', status: 401 });
     }
 
     User.findById(req.cookies[idkey], function (err, doc) {
       if (err) {
-        return res.status(500).send({err:err,status:500});
+        return res.status(500).send({ err: err, status: 500 });
       }
-      
+
       const curTime = new Date().getTime() / 1000;
       if (curTime > doc.expires) {
         refreshApiToken(doc.refreshToken)
@@ -122,14 +118,14 @@ function userController(User) {
             next();
           })
       }
-      else{
+      else {
         req.accessToken = doc.accessToken;
         next();
       }
     });
   }
 
-  async function refreshApiToken(refreshToken, userid) {
+  async function refreshApiToken(refreshToken, res) {
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/x-www-form-urlencoded'
@@ -151,14 +147,14 @@ function userController(User) {
       headers
     )
       .then((spotifyKeys) => {
-        const keys = { 
+        const keys = {
           accessToken: spotifyKeys.data.access_token,
           expires: new Date().getTime() / 1000 + spotifyKeys.data.expires_in
         }
 
         return User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
           if (err) {
-            return res.status(500).send({err:err,status:500});
+            return res.status(500).send({ err: err, status: 500 });
           }
 
           console.log('refreshed token');
@@ -166,7 +162,7 @@ function userController(User) {
         });
       })
       .catch((err) => {
-        return res.status(500).send({err:err,status:500});
+        return res.status(500).send({ err: err, status: 500 });
       });
   }
 
