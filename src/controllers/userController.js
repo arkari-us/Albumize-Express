@@ -2,8 +2,10 @@ const urlParse = require('url-parse');
 const qs = require('qs');
 const { default: axios } = require('axios');
 
-const stateKey = process.env.STATEKEY;
-const idkey = process.env.IDKEY;
+const stateKey = 'state';
+const idkey = 'id';
+const usernameKey = 'username';
+
 const upsertOptions = {
   upsert: true,
   useFindAndModify: false
@@ -21,19 +23,18 @@ function userController(User) {
       state: state
     });
 
-    res.cookie(stateKey, state, { secure: true, httponly: true, path: '/albumize', domain:'arkari.us' });
+    req.session.state = state;
     res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
   function authCallback(req, res) {
     const query = qs.parse(urlParse(req.url).query, { ignoreQueryPrefix: true });
-    if (!req.cookies || !req.cookies[stateKey] || !query || !query.state || req.cookies[stateKey] !== query.state) {
+
+    if (!req.session || !req.session.state || req.session.state != query.state) {
       return res.status(400).send({ err: 'State mismatch', status: 400 });
     }
 
     authCode = query.code;
-
-    res.clearCookie(stateKey);
 
     const headers = {
       'Accept': 'application/json',
@@ -54,7 +55,7 @@ function userController(User) {
       headers
     )
       .then((spotifyKeys) => {
-        //get user id (to be used as mongodb _id)
+        //get user id (to be used as mongodb _id) and username (to display on front end)
         axios.get(
           "https://api.spotify.com/v1/me", {
           headers: {
@@ -65,8 +66,10 @@ function userController(User) {
         })
           .then((profile) => {
             const userid = profile.data.id;
+            const username = profile.data.display_name;
 
             const keys = {
+              username: username,
               refreshToken: spotifyKeys.data.refresh_token,
               accessToken: spotifyKeys.data.access_token,
               expires: new Date().getTime() + spotifyKeys.data.expires_in
@@ -77,7 +80,10 @@ function userController(User) {
               if (err) {
                 return res.status(500).send({ err: err, status: 500 });
               }
-              req.session[idkey] = userid;
+              req.session.userid = userid;
+              req.session.username = username;
+
+              res.cookie(usernameKey, username);
               return res.redirect(process.env.CLIENT_URI);
             });
           })
@@ -101,22 +107,25 @@ function userController(User) {
   }
 
   function authCheck(req, res, next) {
-    if (!req.session || !req.session[idkey]) {
+    if (!req.session || !req.session.userid) {
       return res.status(401).send({ err: 'No session', status: 401 });
     }
 
-    User.findById(req.cookies[idkey], function (err, doc) {
+    User.findById(req.session.userid, function (err, doc) {
       if (err) {
         return res.status(500).send({ err: err, status: 500 });
       }
 
-      const curTime = new Date().getTime() / 1000;
+      const curTime = new Date().getTime();
       if (curTime > doc.expires) {
-        refreshApiToken(doc.refreshToken)
+        refreshApiToken(doc.refreshToken, req.session.userid)
           .then((res) => {
             req.accessToken = res.accessToken;
-            next();
+            next()
           })
+          // .catch((err) => {
+          //   return res.status(500).send({ err: err, status: 500 });
+          // });
       }
       else {
         req.accessToken = doc.accessToken;
@@ -125,7 +134,7 @@ function userController(User) {
     });
   }
 
-  async function refreshApiToken(refreshToken, res) {
+  async function refreshApiToken(refreshToken, userid) {
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/x-www-form-urlencoded'
@@ -139,7 +148,7 @@ function userController(User) {
       client_secret: process.env.CLIENT_SECRET
     }
 
-    console.log('Expired API token, refreshing')
+    console.log('Expired API token, refreshing');
 
     return axios.post(
       'https://accounts.spotify.com/api/token',
@@ -154,16 +163,16 @@ function userController(User) {
 
         return User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
           if (err) {
-            return res.status(500).send({ err: err, status: 500 });
+            return err;
           }
 
           console.log('refreshed token');
           return keys.accessToken;
         });
       })
-      .catch((err) => {
-        return res.status(500).send({ err: err, status: 500 });
-      });
+      // .catch((err) => {
+      //   throw err;
+      // });
   }
 
   return { requestSpotifyAuth, authCallback, authCheck };
