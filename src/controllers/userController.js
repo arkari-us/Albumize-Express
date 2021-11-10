@@ -23,17 +23,18 @@ function userController(User) {
       state: state
     });
 
-    req.session.state = state;
+    res.cookie(stateKey, state, { secure: true, httponly: true, path: '/albumize', domain:'arkari.us' });
     res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
   function authCallback(req, res) {
     const query = qs.parse(urlParse(req.url).query, { ignoreQueryPrefix: true });
 
-    if (!req.session || !req.session.state || req.session.state != query.state) {
+    if (!req.cookies || !req.cookies[stateKey] || !query || !query.state || req.cookies[stateKey] !== query.state) {
       return res.status(400).send({ err: 'State mismatch', status: 400 });
     }
 
+    res.clearCookie(stateKey);
     authCode = query.code;
 
     const headers = {
@@ -122,10 +123,7 @@ function userController(User) {
           .then((res) => {
             req.accessToken = res.accessToken;
             next()
-          })
-          // .catch((err) => {
-          //   return res.status(500).send({ err: err, status: 500 });
-          // });
+          });
       }
       else {
         req.accessToken = doc.accessToken;
@@ -169,10 +167,7 @@ function userController(User) {
           console.log('refreshed token');
           return keys.accessToken;
         });
-      })
-      // .catch((err) => {
-      //   throw err;
-      // });
+      });
   }
 
   return { requestSpotifyAuth, authCallback, authCheck };

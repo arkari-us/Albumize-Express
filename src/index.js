@@ -23,6 +23,7 @@ const port = process.env.PORT;
 
 const userRouter = require('./routes/userRoutes');
 const albumRouter = require('./routes/albumRoutes');
+const playlistRouter = require('./routes/playlistRoutes');
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -51,6 +52,7 @@ app.use(function(req, res, next) {
 
 app.use('/user', userRouter);
 app.use('/albums/', albumRouter);
+app.use('/playlists/',playlistRouter);
 
 app.listen(port, () => {
     console.log('Listening on port ' + port);
