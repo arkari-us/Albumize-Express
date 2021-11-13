@@ -51,8 +51,8 @@ app.use(function(req, res, next) {
 });
 
 app.use('/user', userRouter);
-app.use('/albums/', albumRouter);
-app.use('/playlists/',playlistRouter);
+app.use('/albums', albumRouter);
+app.use('/playlists',playlistRouter);
 
 app.listen(port, () => {
     console.log('Listening on port ' + port);
