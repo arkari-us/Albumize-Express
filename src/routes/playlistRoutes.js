@@ -8,6 +8,6 @@ const userController = require('../controllers/userController')(User);
 playlistRouter.use(userController.authCheck);
 
 playlistRouter.route('/newplaylist')
-  .get(playlistController.createPlaylistFromAlbums);
+  .post(playlistController.createPlaylistFromAlbums);
 
 module.exports = playlistRouter;
