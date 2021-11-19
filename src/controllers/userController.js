@@ -18,7 +18,7 @@ function userController(User) {
     const query = qs.stringify({
       response_type: 'code',
       client_id: process.env.CLIENT_ID,
-      scope: 'playlist-read-private user-read-private',
+      scope: 'playlist-read-private user-read-private playlist-modify-private',
       redirect_uri: process.env.CALLBACK_URI,
       state: state
     });
@@ -70,6 +70,7 @@ function userController(User) {
             const username = profile.data.display_name;
 
             const keys = {
+              userid: userid,
               username: username,
               refreshToken: spotifyKeys.data.refresh_token,
               accessToken: spotifyKeys.data.access_token,
@@ -77,7 +78,7 @@ function userController(User) {
             }
 
             //upsert user
-            User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
+            User.findOneAndUpdate({userid: userid}, { $set: keys }, upsertOptions, function (err, doc) {
               if (err) {
                 return res.status(500).send({ err: err, status: 500 });
               }
@@ -112,11 +113,12 @@ function userController(User) {
       return res.status(401).send({ err: 'No session', status: 401 });
     }
 
-    User.findById(req.session.userid, function (err, doc) {
+    User.findOne({userid: req.session.userid}, function (err, doc) {
       if (err) {
         return res.status(500).send({ err: err, status: 500 });
       }
 
+      res.cookie(usernameKey, doc.username);
       const curTime = new Date().getTime();
       if (curTime > doc.expires) {
         refreshApiToken(doc.refreshToken, req.session.userid)
@@ -159,12 +161,13 @@ function userController(User) {
           expires: new Date().getTime() / 1000 + spotifyKeys.data.expires_in
         }
 
-        return User.findByIdAndUpdate(userid, { $set: keys }, upsertOptions, function (err, doc) {
+        return User.findOneAndUpdate({userid:userid}, { $set: keys }, upsertOptions, function (err, doc) {
           if (err) {
             return err;
           }
 
           console.log('refreshed token');
+
           return keys.accessToken;
         });
       });

@@ -10,6 +10,8 @@ function playlistController(User) {
     const q = qs.parse(urlParse(req.url).query, { ignoreQueryPrefix: true });
     const playlistName = `Albumize_${getDateYYYYMMDD()}`;
 
+    console.log(`creating playlist for ${req.session.userid}`);
+
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -21,6 +23,8 @@ function playlistController(User) {
       description: 'Created by Albumize: http://arkari.us/albumize',
       public: false
     }
+
+    console.log(req.session.userid);
 
     return axios.post(
       `https://api.spotify.com/v1/users/${req.session.userid}/playlists`,
@@ -34,6 +38,8 @@ function playlistController(User) {
         )
           .then((albumData) => {
             //albumData.data.albums
+            console.log('albums: ');
+            console.log(albumData.data.albums);
             var uris = [];
             albumData.data.albums.forEach(album => {
               album.tracks.items.forEach(track => {
@@ -47,7 +53,8 @@ function playlistController(User) {
               { headers: headers }
             )
               .then((playlist) => {
-                return res.send(playlist.data);
+                console.log(playlistData.data);
+                return res.send(playlistData.data.id);
               })
               .catch((err) => {
                 return res.send(err);
