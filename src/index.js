@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const mongoStore = require('connect-mongo');
+const bodyParser = require('body-parser');
 
 const app = express();
 dotenv.config();
@@ -28,6 +29,8 @@ const playlistRouter = require('./routes/playlistRoutes');
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(cookieParser());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
 app.use(session({
   secret: process.env.SESSION_SECRET,
   saveUninitialized: true,

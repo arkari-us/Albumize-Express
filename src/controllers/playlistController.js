@@ -10,8 +10,6 @@ function playlistController(User) {
     const q = qs.parse(urlParse(req.url).query, { ignoreQueryPrefix: true });
     const playlistName = `Albumize_${getDateYYYYMMDD()}`;
 
-    console.log(`creating playlist for ${req.session.userid}`);
-
     const headers = {
       'Accept': 'application/json',
       'Content-Type': 'application/json',
@@ -24,45 +22,46 @@ function playlistController(User) {
       public: false
     }
 
-    console.log(req.session.userid);
-
     return axios.post(
       `https://api.spotify.com/v1/users/${req.session.userid}/playlists`,
       query,
       { headers: headers }
     )
-      .then((playlistData) => {
-        axios.get(
-          `https://api.spotify.com/v1/albums?ids=${q.albums}&market=US`,
-          { headers: headers }
-        )
-          .then((albumData) => {
-            //albumData.data.albums
-            console.log('albums: ');
-            console.log(albumData.data.albums);
-            var uris = [];
-            albumData.data.albums.forEach(album => {
-              album.tracks.items.forEach(track => {
-                uris.push(track.uri);
-              });
-            });
+      .then(async (playlistData) => {
+        var uris = [];
 
-            axios.post(
-              `https://api.spotify.com/v1/playlists/${playlistData.data.id}/tracks?uris=${uris.join(',')}`,
-              {},
-              { headers: headers }
-            )
-              .then((playlist) => {
-                console.log(playlistData.data);
-                return res.send(playlistData.data.id);
-              })
-              .catch((err) => {
-                return res.send(err);
-              })
-          })
-          .catch((err) => {
-            return res.send(err);
-          });
+        //split the call into sets of 20 (max album fetch per Spotify api)
+        for(var i = 0; i < req.body.albums.length / 20; i++) {
+          await axios.get(
+            `https://api.spotify.com/v1/albums?ids=${req.body.albums.slice(i * 20, (i+1) * 20)}&market=US`,
+            { headers: headers }
+          )
+            .then((albumData) => {
+              //albumData.data.albums
+              albumData.data.albums.forEach(album => {
+                album.tracks.items.forEach(track => {
+                  uris.push(track.uri);
+                });
+              });
+            })
+            .catch((err) => {
+              return res.send(err);
+            });
+        }
+
+        //split insert into sets of 100 (max playlist insertion per Spotify api)
+        for (var i = 0; i < uris.length / 100; i++) {
+          await axios.post(
+            `https://api.spotify.com/v1/playlists/${playlistData.data.id}/tracks?uris=${uris.slice(i * 100, (i+1) * 100).join(',')}`,
+            {},
+            { headers: headers }
+          )
+            .catch((err) => {
+              return res.send(err);
+            })
+        }
+
+        return res.send({id: playlistData.data.id});
       })
       .catch((err) => {
         return res.send(err);
@@ -82,7 +81,9 @@ function playlistController(User) {
 
     return [
       yyyy,
+      '-',
       mm,
+      '-',
       dd
     ].join('');
   }
