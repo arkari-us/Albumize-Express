@@ -44,7 +44,7 @@ app.use(session({
   resave: true,
   cookie: {  
     maxAge: oneWeekInMS, 
-    sameSite: false,
+    sameSite: 'none',
     secure: false,
     httpOnly: true,
     domain: 'arkari.us'
@@ -56,6 +56,7 @@ app.use(session({
     console.log(err);
   })
 }));
+app.set('trust proxy', 1);
 
 app.use('/user', userRouter);
 app.use('/albums', albumRouter);

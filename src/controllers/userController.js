@@ -1,6 +1,7 @@
 const urlParse = require('url-parse');
 const qs = require('qs');
 const { default: axios } = require('axios');
+const { Session } = require('express-session');
 
 const stateKey = 'state';
 const idkey = 'id';
@@ -24,7 +25,7 @@ function userController(User) {
       state: state
     });
 
-    res.cookie(stateKey, state, { secure: true, httponly: true, path: '/albumize', domain:'arkari.us' });
+    res.cookie(stateKey, state, { secure: true, httponly: true, path: '/albumize', domain: 'arkari.us' });
     res.redirect('https://accounts.spotify.com/authorize?' + query);
   }
 
@@ -35,7 +36,7 @@ function userController(User) {
       return res.status(400).send({ err: 'State mismatch', status: 400 });
     }
 
-    res.clearCookie(stateKey, { secure: true, httponly: true, path: '/albumize', domain:'arkari.us' });
+    res.clearCookie(stateKey, { secure: true, httponly: true, path: '/albumize', domain: 'arkari.us' });
     authCode = query.code;
 
     const headers = {
@@ -79,14 +80,13 @@ function userController(User) {
             }
 
             //upsert user
-            User.findOneAndUpdate({userid: userid}, { $set: keys }, upsertOptions, function (err, doc) {
+            User.findOneAndUpdate({ userid: userid }, { $set: keys }, upsertOptions, function (err, doc) {
               if (err) {
                 return res.status(500).send({ err: err, status: 500 });
               }
               req.session.userid = userid;
               req.session.username = username;
 
-              res.cookie(usernameKey, username, { secure: false, httponly: true, path: '/albumize', domain:'arkari.us', maxAge: oneWeekInMS});
               return res.redirect(process.env.CLIENT_URI);
             });
           })
@@ -114,9 +114,7 @@ function userController(User) {
       return res.status(401).send({ err: 'No session', status: 401 });
     }
 
-    console.log(req.session);
-
-    User.findOne({userid: req.session.userid}, function (err, doc) {
+    User.findOne({ userid: req.session.userid }, function (err, doc) {
       if (err) {
         return res.status(500).send({ err: err, status: 500 });
       }
@@ -163,7 +161,7 @@ function userController(User) {
           expires: new Date().getTime() + (60 * 60 * 1000) //one hour in milliseconds
         }
 
-        return User.findOneAndUpdate({userid:userid}, { $set: keys }, upsertOptions, function (err, doc) {
+        return User.findOneAndUpdate({ userid: userid }, { $set: keys }, upsertOptions, function (err, doc) {
           if (err) {
             return err;
           }
@@ -175,7 +173,29 @@ function userController(User) {
       });
   }
 
-  return { requestSpotifyAuth, authCallback, authCheck };
+  function logout(req, res) {
+    if (!req.session || !req.session.userid) {
+      return res.status(401).send({ err: 'No session', status: 401 });
+    }
+
+    req.session.destroy();
+    res.clearCookie('connect.sid', {
+      sameSite: 'none',
+      secure: false,
+      httpOnly: true,
+      domain: 'arkari.us'
+    }).send({ message: 'Logout successful', status: 200 });
+  }
+
+  function getUser(req, res) {
+    if (!req.session || !req.session.userid) {
+      return res.send({ data: { userid: '', username: '' } });
+    }
+
+    return res.send({ data: { userid: req.session.userid, username: req.session.username }, status: 200 })
+  }
+
+  return { requestSpotifyAuth, authCallback, authCheck, logout, getUser };
 }
 
 module.exports = userController;
