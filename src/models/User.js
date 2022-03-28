@@ -4,8 +4,7 @@ const userModel = new mongoose.Schema({
   userid: String,
   username: String,
   accessToken: String,
-  refreshToken: String,
-  expires: Number
+  refreshToken: String
 });
 
 module.exports = mongoose.model('User', userModel);

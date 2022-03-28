@@ -5,6 +5,7 @@ const { default: axios } = require('axios');
 const stateKey = 'state';
 const idkey = 'id';
 const usernameKey = 'username';
+const oneWeekInMS = 60 * 60 * 24 * 7 * 1000;
 
 const upsertOptions = {
   upsert: true,
@@ -34,7 +35,7 @@ function userController(User) {
       return res.status(400).send({ err: 'State mismatch', status: 400 });
     }
 
-    res.clearCookie(stateKey);
+    res.clearCookie(stateKey, { secure: true, httponly: true, path: '/albumize', domain:'arkari.us' });
     authCode = query.code;
 
     const headers = {
@@ -74,7 +75,7 @@ function userController(User) {
               username: username,
               refreshToken: spotifyKeys.data.refresh_token,
               accessToken: spotifyKeys.data.access_token,
-              expires: new Date().getTime() + spotifyKeys.data.expires_in
+              expires: new Date().getTime() + (60 * 60 * 1000) //one hour in milliseconds
             }
 
             //upsert user
@@ -85,7 +86,7 @@ function userController(User) {
               req.session.userid = userid;
               req.session.username = username;
 
-              res.cookie(usernameKey, username);
+              res.cookie(usernameKey, username, { secure: false, httponly: true, path: '/albumize', domain:'arkari.us', maxAge: oneWeekInMS});
               return res.redirect(process.env.CLIENT_URI);
             });
           })
@@ -113,12 +114,13 @@ function userController(User) {
       return res.status(401).send({ err: 'No session', status: 401 });
     }
 
+    console.log(req.session);
+
     User.findOne({userid: req.session.userid}, function (err, doc) {
       if (err) {
         return res.status(500).send({ err: err, status: 500 });
       }
 
-      res.cookie(usernameKey, doc.username);
       const curTime = new Date().getTime();
       if (curTime > doc.expires) {
         refreshApiToken(doc.refreshToken, req.session.userid)
@@ -158,7 +160,7 @@ function userController(User) {
       .then((spotifyKeys) => {
         const keys = {
           accessToken: spotifyKeys.data.access_token,
-          expires: new Date().getTime() / 1000 + spotifyKeys.data.expires_in
+          expires: new Date().getTime() + (60 * 60 * 1000) //one hour in milliseconds
         }
 
         return User.findOneAndUpdate({userid:userid}, { $set: keys }, upsertOptions, function (err, doc) {

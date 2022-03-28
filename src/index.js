@@ -5,6 +5,9 @@ const cookieParser = require('cookie-parser');
 const session = require('express-session');
 const mongoStore = require('connect-mongo');
 const bodyParser = require('body-parser');
+const cors = require('cors');
+
+const oneWeekInMS = 60 * 60 * 24 * 7 * 1000;
 
 const app = express();
 dotenv.config();
@@ -31,12 +34,20 @@ app.use(express.json());
 app.use(cookieParser());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
+app.use(cors({
+  origin: `http://localhost:${port}`,
+  credentials: true
+}));
 app.use(session({
   secret: process.env.SESSION_SECRET,
   saveUninitialized: true,
-  resave: false,
+  resave: true,
   cookie: {  
-    maxAge: 60 * 60 * 24 * 7 * 1000,
+    maxAge: oneWeekInMS, 
+    sameSite: false,
+    secure: false,
+    httpOnly: true,
+    domain: 'arkari.us'
   },
   store: mongoStore.create({
     mongoUrl: process.env.MONGOURI + process.env.DBNAME,
@@ -45,13 +56,6 @@ app.use(session({
     console.log(err);
   })
 }));
-
-app.use(function(req, res, next) {  
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Credentials', true);
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-  next();
-});
 
 app.use('/user', userRouter);
 app.use('/albums', albumRouter);

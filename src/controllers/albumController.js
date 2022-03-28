@@ -83,8 +83,10 @@ function albumController(User) {
     )
       .then((reply) => {
         var albums = [];
-        reply.data.tracks.items.forEach((e) => {
-          albums.push(e.track.album);
+        reply.data.tracks.items.forEach((e, i) => {
+          if (e.track) {
+            albums.push(e.track.album);
+          }
         });
 
         return albums;
