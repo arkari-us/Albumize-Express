@@ -40,14 +40,10 @@ app.use(cors({
 }));
 app.use(session({
   secret: process.env.SESSION_SECRET,
-  saveUninitialized: true,
-  resave: true,
-  cookie: {  
-    maxAge: oneWeekInMS, 
-    sameSite: 'none',
-    secure: false,
-    httpOnly: true,
-    domain: 'arkari.us'
+  saveUninitialized: false,
+  resave: false,
+  cookie: {
+    maxAge: oneWeekInMS
   },
   store: mongoStore.create({
     mongoUrl: process.env.MONGOURI + process.env.DBNAME,

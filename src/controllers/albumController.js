@@ -83,7 +83,7 @@ function albumController(User) {
       { headers: headers }
     )
       .then((reply) => {
-        return await getExportedAlbums(userid)
+        return getExportedAlbums(userid)
           .then((exportList) => {
             var albums = [];
             reply.data.tracks.items.forEach((e, i) => {

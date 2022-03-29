@@ -5,6 +5,7 @@ const userModel = new mongoose.Schema({
   username: String,
   accessToken: String,
   refreshToken: String,
+  expires: Number,
   exportList: [String]
 });
 

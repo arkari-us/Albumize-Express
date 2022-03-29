@@ -110,7 +110,7 @@ function userController(User) {
   }
 
   function authCheck(req, res, next) {
-    if (!req.session || !req.session.userid) {
+    if (!req.session || !req.session.userid || !req.session.username) {
       return res.status(401).send({ err: 'No session', status: 401 });
     }
 
@@ -120,6 +120,7 @@ function userController(User) {
       }
 
       const curTime = new Date().getTime();
+
       if (curTime > doc.expires) {
         refreshApiToken(doc.refreshToken, req.session.userid)
           .then((res) => {
@@ -174,17 +175,13 @@ function userController(User) {
   }
 
   function logout(req, res) {
-    if (!req.session || !req.session.userid) {
-      return res.status(401).send({ err: 'No session', status: 401 });
-    }
-
     req.session.destroy();
     res.clearCookie('connect.sid', {
       sameSite: 'none',
       secure: false,
       httpOnly: true,
       domain: 'arkari.us'
-    }).send({ message: 'Logout successful', status: 200 });
+    }).send(true);
   }
 
   function getUser(req, res) {
@@ -195,7 +192,19 @@ function userController(User) {
     return res.send({ data: { userid: req.session.userid, username: req.session.username }, status: 200 })
   }
 
-  return { requestSpotifyAuth, authCallback, authCheck, logout, getUser };
+  function removeUser(req, res) {
+    User.findOneAndRemove({ userid: req.session.userid }, function(err, doc) {
+      req.session.destroy();
+      res.clearCookie('connect.sid', {
+        sameSite: 'none',
+        secure: false,
+        httpOnly: true,
+        domain: 'arkari.us'
+      }).send(true);
+    });
+  }
+
+  return { requestSpotifyAuth, authCallback, authCheck, logout, getUser, removeUser };
 }
 
 module.exports = userController;
