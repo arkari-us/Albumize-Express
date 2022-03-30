@@ -1,4 +1,3 @@
-const mongoose = require('mongoose');
 const User = require('../models/User');
 const { default: axios } = require('axios');
 const qs = require('qs');
@@ -11,7 +10,7 @@ function albumController(User) {
   function getNewReleaseAlbums(req, res) {
     getCuratedPlaylistId(req.accessToken, 'Release Radar')
       .then((playlistId) => {
-        getAlbums(playlistId, req.accessToken)
+        getAlbums(playlistId, req.accessToken, req.session.userid)
           .then((data) => {
             return res.status(200).send({ albums: data, status: 200 });
           });
@@ -21,7 +20,7 @@ function albumController(User) {
   function getDiscoverWeeklyAlbums(req, res) {
     getCuratedPlaylistId(req.accessToken, 'Discover Weekly')
     .then((playlistId) => {
-      getAlbums(playlistId, req.accessToken)
+      getAlbums(playlistId, req.accessToken, req.session.userid)
         .then((data) => {
           return res.status(200).send({ albums: data, status: 200 });
         });
@@ -50,10 +49,12 @@ function albumController(User) {
           return results.data.playlists.items[0].id;
         }
         else {
+          console.log(results)
           throw 'Unable to retrieve Release Radar playlist ID';
         }
       })
       .catch((err) => {
+        console.log(err);
         throw 'Unable to retrieve Release Radar playlist ID';
       });
   }
@@ -65,7 +66,7 @@ function albumController(User) {
       });
   }
 
-  async function getAlbums(id, accessToken) {
+  async function getAlbums(id, accessToken, userid) {
 
     const headers = {
       'Accept': 'application/json',
@@ -82,18 +83,40 @@ function albumController(User) {
       { headers: headers }
     )
       .then((reply) => {
-        var albums = [];
-        reply.data.tracks.items.forEach((e, i) => {
-          if (e.track) {
-            albums.push(e.track.album);
-          }
-        });
+        return getExportedAlbums(userid)
+          .then((exportList) => {
+            var albums = [];
+            reply.data.tracks.items.forEach((e, i) => {
+              if (e.track) {
+                album = e.track.album;
+                album.alreadyExported = exportList.includes(e.track.album.id);
+                albums.push(album);
+              }
+            });
 
-        return albums;
+            return albums;
+          })
+          .catch((err) => {
+            console.log(err);
+            throw err;
+          })
       })
       .catch((err) => {
+        console.log(err);
         throw 'Unable to get albums by playlist ID';
       });
+  }
+
+  async function getExportedAlbums(userid) {
+    return User.findOne({ userid: userid }).exec()
+      .then((doc) => {
+        return doc.exportList;
+      })
+      .catch((err) => {
+        console.log(err);
+        throw err;
+      });
+
   }
 
   return { getNewReleaseAlbums, getDiscoverWeeklyAlbums, getAlbumsByPlaylistId };

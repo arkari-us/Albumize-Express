@@ -4,6 +4,10 @@ const { default: axios } = require('axios');
 const qs = require('qs');
 const urlParse = require('url-parse');
 
+const insertOptions = {
+  useFindAndModify: false
+}
+
 function playlistController(User) {
 
   async function createPlaylistFromAlbums(req, res) {
@@ -55,7 +59,7 @@ function playlistController(User) {
           })
 
         var playlistPromises = [];
-        //split insert into sets of 100 (max playlist insertion per Spotify api)
+        //split insert into sets of 100 tracks (max playlist insertion per Spotify api)
         for (var i = 0; i < uris.length / 100; i++) {
           playlistPromises.push(axios.post(
             `https://api.spotify.com/v1/playlists/${playlistData.data.id}/tracks?uris=${uris.slice(i * 100, (i+1) * 100).join(',')}`,
@@ -65,7 +69,13 @@ function playlistController(User) {
         }
         Promise.all(playlistPromises)
           .then((data) => {
-            return res.send({id: playlistData.data.id});
+            User.findOneAndUpdate({ userid: req.session.userid }, { $addToSet: { exportList: { $each: req.body.albums } } }, insertOptions, function (err, doc) {
+              if (err) {
+                return res.status(500).send({ err: err, status: 500 });
+              }
+              
+              return res.send({id: playlistData.data.id});
+            });
           })
           .catch((err) => {
             return res.send(err);
