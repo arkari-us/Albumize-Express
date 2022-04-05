@@ -6,7 +6,8 @@ const userController = require('../controllers/userController')(User);
 
 userRouter.route('/')
   .get(userController.getUser, userController.authCheck)
-  .delete(userController.logout, userController.authCheck);
+  .delete(userController.logout, userController.authCheck)
+  .patch(userController.eulaAccepted, userController.authCheck);
 userRouter.route('/auth')
   .get(userController.requestSpotifyAuth)
   .delete(userController.removeUser, userController.authCheck);

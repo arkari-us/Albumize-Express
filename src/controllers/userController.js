@@ -76,7 +76,8 @@ function userController(User) {
               username: username,
               refreshToken: spotifyKeys.data.refresh_token,
               accessToken: spotifyKeys.data.access_token,
-              expires: new Date().getTime() + (60 * 60 * 1000) //one hour in milliseconds
+              expires: new Date().getTime() + (60 * 60 * 1000), //one hour in milliseconds
+              eulaAccepted: false
             }
 
             //upsert user
@@ -189,7 +190,11 @@ function userController(User) {
       return res.send({ data: { userid: '', username: '' } });
     }
 
-    return res.send({ data: { userid: req.session.userid, username: req.session.username }, status: 200 })
+    return User.findOne({ userid: req.session.userid }, function (err, doc) {
+      if (err) res.send(err);
+
+      return res.send({ data: { userid: doc.userid, username: doc.username, eulaAccepted: doc.eulaAccepted }});
+    });
   }
 
   function removeUser(req, res) {
@@ -204,7 +209,15 @@ function userController(User) {
     });
   }
 
-  return { requestSpotifyAuth, authCallback, authCheck, logout, getUser, removeUser };
+  function eulaAccepted(req, res) {
+    User.findOneAndUpdate({ userid: req.session.userid }, {eulaAccepted: true}, function(err, doc) {
+      if (err) return res.send(err);
+
+      return res.send({ data: true });
+    });
+  }
+
+  return { requestSpotifyAuth, authCallback, authCheck, logout, getUser, removeUser, eulaAccepted };
 }
 
 module.exports = userController;

@@ -6,7 +6,8 @@ const userModel = new mongoose.Schema({
   accessToken: String,
   refreshToken: String,
   expires: Number,
-  exportList: [String]
+  exportList: [String],
+  eulaAccepted: Boolean
 });
 
 module.exports = mongoose.model('User', userModel);
